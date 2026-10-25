@@ -1,0 +1,10 @@
+name = "zip-pilot"
+version = "0.1.0"
+defaultTargets = ["ZipPilot", "zip-pilot"]
+
+[[lean_lib]]
+name = "ZipPilot"
+
+[[lean_exe]]
+name = "zip-pilot"
+root = "Main"
