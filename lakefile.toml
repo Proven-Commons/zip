@@ -1,5 +1,6 @@
 name = "zip-pilot"
 version = "0.1.0"
+license = "Apache-2.0"
 defaultTargets = ["ZipPilot", "zip-pilot"]
 
 [[lean_lib]]
