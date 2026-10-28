@@ -20,12 +20,12 @@
   this disk (2), total entries (2), directory size (4), directory
   offset (4), comment length (2), then the comment.
 
-  This first slice reads stored entries only, so parsing turns an
-  archive away when any entry uses another method, carries the
-  encryption flag or the data descriptor flag, sits on another disk,
-  or uses ZIP64 markers (a size or offset field of all ones, or a
-  ZIP64 extra field). Turning an archive away is an error, never a
-  partial read.
+  The reader reads stored entries (method 0) and deflated entries
+  (method 8, see `Inflate.lean`). Parsing turns an archive away when
+  any entry uses another method, carries the encryption flag or the
+  data descriptor flag, sits on another disk, or uses ZIP64 markers
+  (a size or offset field of all ones, or a ZIP64 extra field).
+  Turning an archive away is an error, never a partial read.
 
   This code is covered by the differential tests in `tests/`, not by
   a proof. The proved part of this project is the path gate in
@@ -138,7 +138,7 @@ def parseCentralHeader (data : ByteArray) (off : Nat) : Option (CentralEntry × 
     let localOff := u32 data (off + 42)
     let total := 46 + nLen + xLen + cLen
     if flags % 2 = 1 ∨ (flags / 8) % 2 = 1 then none
-    else if method ≠ 0 then none
+    else if method ≠ 0 ∧ method ≠ 8 then none
     else if disk ≠ 0 then none
     else if comp = 0xFFFFFFFF ∨ size = 0xFFFFFFFF ∨ localOff = 0xFFFFFFFF then none
     else if off + total > data.size then none

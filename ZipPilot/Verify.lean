@@ -6,8 +6,11 @@
 -/
 
 import ZipPilot.Archive
+import ZipPilot.InflateProofs
 
 #print axioms ZipPilot.gate_sound
 #print axioms ZipPilot.cleanComponents_sound
 #print axioms ZipPilot.extractAll_safe
 #print axioms ZipPilot.extractArchive_safe
+#print axioms ZipPilot.inflate_deflateStored
+#print axioms ZipPilot.inflate_deflateFixed

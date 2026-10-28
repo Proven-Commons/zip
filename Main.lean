@@ -13,9 +13,10 @@
         SKIP   <name> directory                for a directory entry
 
   An archive the parser turns away (truncated, malformed, or holding
-  an entry outside the first slice: another compression method,
-  ZIP64, encryption, or a data descriptor) prints an error to stderr
-  and exits with code 1 for both commands.
+  an entry outside what the reader covers: a compression method
+  other than stored or deflate, ZIP64, encryption, or a data
+  descriptor) prints an error to stderr and exits with code 1 for
+  both commands.
 -/
 
 import ZipPilot
