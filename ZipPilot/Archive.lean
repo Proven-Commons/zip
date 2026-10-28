@@ -14,6 +14,7 @@
 import ZipPilot.Path
 import ZipPilot.Header
 import ZipPilot.Crc32
+import ZipPilot.Inflate
 
 namespace ZipPilot
 
@@ -24,11 +25,34 @@ structure RawEntry where
   isDir : Bool
   data : ByteArray
 
+/-- The largest declared plain size, in bytes, that a deflated
+    entry may claim: 256 MiB. The size fields in the headers are
+    four bytes wide, so without a fixed cap a hostile entry could
+    claim up to 4 GiB of output and have the reader try to produce
+    it. This cap sits far above the entries this reader is aimed
+    at, and it is checked from the header sizes before any
+    inflation work starts. -/
+def maxUncompressedSize : Nat := 268435456
+
+/-- The largest ratio of plain size to compressed size that a
+    deflated entry may claim: 1000 to 1. A real deflate stream
+    cannot do much better than about 1032 to 1, so this refuses
+    almost nothing honest, and it stops an entry that spends a
+    small archive on a much larger output even when that output
+    stays under the size cap. Like the size cap, it is checked
+    from the header sizes before any inflation work starts.
+    Either cap going past turns the entry, and so the whole
+    archive, away. -/
+def maxInflateRatio : Nat := 1000
+
 /-- Read one entry's data through its local file header. The local
     header must agree with the central directory on the name, the
     flags, the method, the CRC, and both sizes. The data must end
-    before the central directory starts, and its CRC-32 must match
-    the headers, so a damaged entry is turned away whole. -/
+    before the central directory starts. A deflated entry (method 8)
+    first faces the two size caps above, then is inflated with the
+    declared plain size as a cap and must come out at exactly that
+    size. The plain bytes' CRC-32 must match the headers, so a
+    damaged entry is turned away whole. -/
 def readEntry (data : ByteArray) (cdStart : Nat) (e : CentralEntry) :
     Option RawEntry :=
   let lo := e.localOffset
@@ -52,10 +76,20 @@ def readEntry (data : ByteArray) (cdStart : Nat) (e : CentralEntry) :
       | none => none
       | some true => none
       | some false =>
-        let bytes := data.extract dStart dEnd
-        if (Crc32.crc32 bytes.toList).toNat ≠ e.crc then none
-        else some { name := e.name, isDir := e.name.endsWith "/",
-                    data := bytes }
+        let raw := data.extract dStart dEnd
+        let plain : Option ByteArray :=
+          if e.method = 0 then some raw
+          else if e.size > maxUncompressedSize then none
+          else if e.size > maxInflateRatio * e.compSize then none
+          else
+            (inflate raw.toList e.size).bind fun pl =>
+              if pl.length = e.size then some ⟨pl.toArray⟩ else none
+        match plain with
+        | none => none
+        | some bytes =>
+          if (Crc32.crc32 bytes.toList).toNat ≠ e.crc then none
+          else some { name := e.name, isDir := e.name.endsWith "/",
+                      data := bytes }
 
 /-- Parse a whole archive. The end record is read first, then the
     central directory it points at, then each entry through its local
